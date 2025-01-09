@@ -5,14 +5,17 @@ import bcrypt from "bcrypt";
 export const setPreference = async (req, res) => {
     try {
         const { preference, password } = req.body;
+
         //first we check if an astrologer with the ID exists or not
         const astrologer = await Astrologer.findById(req.params.id);
         if (!astrologer) return res.status(404).json({ message: "Astrologer not found" });
+
         //second, we check if password for that astrologer is a match or not
         const isPasswordMatch=await bcrypt.compare(password,astrologer.hashedPassword);
         if (!isPasswordMatch) {
             return res.status(401).json({ message: "Invalid password" });
         }
+        
         //third, if the astrologer is found AND the password is also correct, only then we check if preference can be set or not
         if (astrologer.rating < 4) {
             return res.status(403).json({ message: "Your rating does not allow you to set preferences" });

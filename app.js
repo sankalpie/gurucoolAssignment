@@ -8,10 +8,14 @@ const app = express();
 
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI).then(() => console.log("MongoDB connected successfully")).catch((e) => {console.error(e)});
-
 app.use("/astrologers", astrologerRoutes);
 
-app.listen(5000, () => {
-  console.log(`Server running on port 5000`);
-});
+if (process.env.NODE_ENV !== "test") {
+    mongoose.connect(process.env.MONGO_URI).then(() => console.log("MongoDB connected successfully")).catch((e) => console.error(e));
+
+    app.listen(5000, () => {
+        console.log(`Server running on port 5000`);
+    });
+}
+
+export default app;
