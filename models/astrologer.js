@@ -9,7 +9,8 @@ const astrologerSchema = new mongoose.Schema({
     default: "neutral" 
   },
   currentLoad: { type: Number, default: 0 },
-  connectedUsers: [{ type: String }]
+  connectedUsers: [{ type: String }],
+  hashedPassword: { type: String, required: true }
 });
 
 const Astrologer = mongoose.model("Astrologer", astrologerSchema);
