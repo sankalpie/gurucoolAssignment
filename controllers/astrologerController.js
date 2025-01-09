@@ -25,46 +25,45 @@ export const setPreference = async (req, res) => {
 export const connectUser = async (req, res) => {
     try {
         const { email } = req.body;
-
-        const astrologers = await Astrologer.find();
+        
+        const astrologers = await Astrologer.aggregate([
+            {
+                $addFields: {
+                    effectiveLoad: {
+                        $switch: {
+                            branches: [
+                                { case: { $eq: ["$preference", "more"] }, then: { $multiply: ["$currentLoad", 0.5] } },
+                                { case: { $eq: ["$preference", "less"] }, then: { $multiply: ["$currentLoad", 1.5] } }
+                            ],
+                            default: "$currentLoad"
+                        }
+                    }
+                }
+            },
+            { $sort: { effectiveLoad: 1, rating: -1, name: 1 } }, // Sort by effectiveLoad (asc), then rating (desc), then name (asc)
+            { $limit: 1 } // Only get the astrologer with the lowest effective load
+        ]);
 
         if (astrologers.length === 0) {
             return res.status(404).json({ message: "No astrologers available" });
         }
 
-        // Adjust load based on preferences
-        astrologers.forEach(astrologer => {
-            if (astrologer.preference === "more") {
-                astrologer.effectiveLoad = astrologer.currentLoad * 0.5;
-            } else if (astrologer.preference === "less") {
-                astrologer.effectiveLoad = astrologer.currentLoad * 1.5;
-            } else {
-                astrologer.effectiveLoad = astrologer.currentLoad;
-            }
-        });
-
-        // Find the astrologer with the lowest effective load
-        astrologers.sort((a, b) => {
-            if (a.effectiveLoad !== b.effectiveLoad) {
-                return a.effectiveLoad - b.effectiveLoad; // Primary sort by effectiveLoad
-            }
-            if (b.rating !== a.rating) {
-                return b.rating - a.rating; // Secondary sort by rating (desc)
-            }
-            return a.name.localeCompare(b.name); // Tertiary sort alphabetically by name
-        });
         const selectedAstrologer = astrologers[0];
 
-        // push the user email into the connectedUsers array then increase the currentLoad
-        selectedAstrologer.connectedUsers.push(email);
-        selectedAstrologer.currentLoad++;
-
-        await selectedAstrologer.save();
-
+        const updatedAstrologer = await Astrologer.findByIdAndUpdate(
+            selectedAstrologer._id,
+            {
+                $push: { connectedUsers: email },
+                $inc: { currentLoad: 1 }
+            },
+            { new: true }
+        );
+        //resp
         res.status(200).json({
-            message: `User connected to astrologer ${selectedAstrologer.name}`,
-            astrologer: selectedAstrologer
+            message: `User connected to astrologer ${updatedAstrologer.name}`,
+            astrologer: updatedAstrologer
         });
+
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err.message });
     }
